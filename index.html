@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Payment Calculator</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css">
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f0f8; /* Light purple background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            max-width: 1000px;
+            width: 100%;
+        }
+        .calculator, .results {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            max-height: 500px;
+            width: 100%;
+            border-left: 5px solid #b080d6; /* Light purple accent */
+            margin-right: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .results {
+             border-left: 5px solid #a070d6; /* Slightly darker purple for results */
+        }
+        h1 {
+            color: #b080d6; /* Light purple */
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            text-align: left;
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            border-color: #b080d6; /* Light purple */
+            outline: none;
+            box-shadow: 0 0 5px rgba(26, 115, 232, 0.2);
+        }
+        button {
+            background-color: #b080d6; /* Light purple */
+            color: white;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #9d66c2; /* Darker purple on hover */
+        }
+        .results {
+            flex-grow: 1;
+            margin-right: 0; /* Remove the extra margin from the last container */
+        }
+        #result, #amortization {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            max-height: relative;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4eafc; /* Light purple for table headers */
+        }
+		/* Mobile view adjustments */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+                padding: 20px;
+            }
+            .calculator, .results {
+                max-width: 100%;
+                margin-bottom: 20px;
+                border-left-width: 4px; /* Reduce border thickness for mobile */
+                padding: 20px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            input, button {
+                font-size: 14px;
+                padding: 10px;
+            }
+            #result, #amortization {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="calculator">
+            <h1>Loan Payment Calculator</h1>
+            <label for="loan_amount">Loan Principal:</label>
+            <input type="number" id="loan_amount" placeholder="Enter loan principal amount" min="0" required>
+            <label for="interest_rate">Annual Interest Rate (%):</label>
+            <input type="number" id="interest_rate" placeholder="Enter interest rate" min="0" step="0.01" required>
+            <label for="loan_term">Loan Term (years):</label>
+            <input type="number" id="loan_term" placeholder="Enter loan term in years" min="1" required>
+            <label for="extra_payment">Extra Monthly Payment (optional):</label>
+            <input type="number" id="extra_payment" placeholder="Enter extra monthly payment" min="0" value="0">
+            <button id="calculate-btn">Calculate Payment</button>
+        </div>
+        
+        <div class="results">
+            <div id="result"></div>
+            <div id="amortization"></div>
+        </div>
+    </div>
+
+    <!-- PyScript logic for loan calculation -->
+    <py-script>
+        import asyncio
+        from pyscript import Element
+
+        async def load_packages():
+            import micropip
+            await micropip.install("pandas")
+        
+        async def calculate_loan_payment():
+            import pandas as pd
+            
+            # Input values
+            loan_amount = float(Element("loan_amount").element.value)
+            annual_interest_rate = float(Element("interest_rate").element.value) / 100
+            loan_term_years = float(Element("loan_term").element.value)
+            extra_payment = float(Element("extra_payment").element.value) if Element("extra_payment").element.value else 0
+
+            monthly_interest_rate = annual_interest_rate / 12
+            number_of_payments = loan_term_years * 12
+
+            # Validate number of payments to avoid division by zero
+            if number_of_payments <= 0:
+                Element("result").element.innerHTML = "Invalid loan term."
+                return
+
+            # Calculate monthly payment
+            if monthly_interest_rate > 0:
+                monthly_payment = (
+                    loan_amount * monthly_interest_rate /
+                    (1 - (1 + monthly_interest_rate) ** -number_of_payments)
+                )
+            else:
+                monthly_payment = loan_amount / number_of_payments
+
+            total_monthly_payment = monthly_payment + extra_payment
+            total_payment = 0
+            total_interest = 0
+            remaining_balance = loan_amount
+
+            # Prepare amortization schedule
+            amortization_schedule = []
+
+            for month in range(1, int(number_of_payments) + 1):
+                interest_payment = remaining_balance * monthly_interest_rate
+                principal_payment = total_monthly_payment - interest_payment
+                remaining_balance -= principal_payment
+                total_payment += total_monthly_payment
+                total_interest += interest_payment
+                
+                # Handle early repayment option
+                if remaining_balance < 0:
+                    remaining_balance = 0
+                
+                amortization_schedule.append((month, total_monthly_payment, principal_payment, interest_payment, remaining_balance))
+
+            # Display results
+            result = (f"Monthly Payment: ₱{monthly_payment:.2f}<br>"
+                      f"Total Payment: ₱{total_payment:.2f}<br>"
+                      f"Total Interest: ₱{total_interest:.2f}")
+            Element("result").element.innerHTML = result
+            
+            # Create a DataFrame for the amortization schedule
+            df = pd.DataFrame(amortization_schedule, columns=["Month", "Total Payment", "Principal Payment", "Interest Payment", "Remaining Balance"])
+
+            # Apply .2f formatting to all necessary columns
+            df["Total Payment"] = df["Total Payment"].map("{:.2f}".format)
+            df["Principal Payment"] = df["Principal Payment"].map("{:.2f}".format)
+            df["Interest Payment"] = df["Interest Payment"].map("{:.2f}".format)
+            df["Remaining Balance"] = df["Remaining Balance"].map("{:.2f}".format)
+
+            # Generate HTML for the schedule
+            schedule_html = df.to_html(index=False, border=0)
+
+            Element("amortization").element.innerHTML = "<h2>Amortization Schedule</h2>" + schedule_html
+
+        # Main function to load packages and set up the button click
+        async def main():
+            await load_packages()
+            Element("calculate-btn").element.onclick = lambda e: asyncio.ensure_future(calculate_loan_payment())
+
+        # Start the main function
+        asyncio.ensure_future(main())
+    </py-script>
+</body>
+</html>
